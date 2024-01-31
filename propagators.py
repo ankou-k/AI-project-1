@@ -86,23 +86,62 @@ def prop_BT(csp, newVar=None):
             if not c.check_tuple(vals):
                 return False, []
     return True, []
-
 def prop_FC(csp, newVar=None):
-    '''Do forward checking. That is check constraints with
-       only one uninstantiated variable. Remember to keep
-       track of all pruned variable,value pairs and return '''
-    #IMPLEMENT
-    if not newVar:
-        return True, []
-    for c in csp.get_cons_with_var(newVar):
-        if c.get_n_unasgn() == 0:
-            vals = []
-            vars = c.get_scope()
-            for var in vars:
-                vals.append(var.get_assigned_value())
-            if not c.check_tuple(vals):
-                return False, []
-    return True, []
+    '''
+    Check constraints that have exactly one unassigned variable in their scope, 
+    Remove variable domain values that are not legal in the constraint. 
+    If newVar is None, search  all constraints. 
+    If newVar is given, only search  constraints involving newVar
+
+    '''
+
+    # A list of (Variable, value) tuples pruned by FC  
+    pruned_list = []
+    
+  
+    # If newVar is given, only get constraints involving this newVar
+    # If None as in default, get all constraints
+    t_cons_list = csp.get_cons_with_var(newVar) if newVar else csp.get_all_cons()
+
+    # update, only choose the constrainsts with 1 unassigned var
+    cons_list = [c for c in t_cons_list if c.get_n_unasgn() == 1]
+
+ 
+    for c in cons_list:
+        
+        # --if only 1 var in constraint c's scope is unassigned
+        var_list = c.get_unasgn_vars()
+
+        # only select the constraints with ONLY one unassigned var
+        last_var = var_list[0]
+    
+        # check constraints with the domain values of 'this' variable
+        for d_val in last_var.cur_domain():  
+            
+            # temporarily assign value to this variable (will unassign ....)
+            last_var.assign(d_val)
+            
+            # get the assigned values from constraint after newly assigning a variable
+            vals = [v.get_assigned_value() for v in c.get_scope()]
+
+            # check the constraint with its scope values.
+            # if not consistent/legal, remove it from its current domain.
+            # Also, add to the pruned list as a tuple to be returned 
+            if not c.check(vals):
+                pair = (last_var, d_val)
+                if (pair not in pruned_list):
+                    last_var.prune_value(d_val) # remove from variable's domain
+                    pruned_list.append(pair)    # add to the to be returned list
+
+            # unassign after testing
+            last_var.unassign()
+                
+            # if this variable has no more domain values, return false to be backtracked
+            if last_var.cur_domain_size() == 0:  
+                return False, pruned_list
+
+    return True, pruned_list
+
 
 
 def prop_GAC(csp, newVar=None):
