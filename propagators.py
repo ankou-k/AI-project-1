@@ -145,8 +145,47 @@ def prop_FC(csp, newVar=None):
 
 
 def prop_GAC(csp, newVar=None):
-    '''Do GAC propagation. If newVar is None we do initial GAC enforce
+    '''Do GAC propagation. If newVar is None we do initial GAC enforce 
        processing all constraints. Otherwise we do GAC enforce with
        constraints containing newVar on GAC Queue'''
-    #IMPLEMENT
-    pass
+    
+    pruned_list = []    # function returned list with pruned tuple(s), (var, val)
+    arc_queue = []      # stores the hyper-arcs (constraints) to be processed, until empty
+    
+    # If newVar is given, only get constraints (hyper-arcs) involving this newVar
+    # If None as in default, get all constraints (hyper-arcs)
+    arc_queue = csp.get_cons_with_var(newVar) if newVar else csp.get_all_cons()
+    
+    # checking contraints continues if queue is NOT empty
+    while len(arc_queue) != 0:
+        
+        arc = arc_queue.pop(0)  # constraint is hyper-arc
+
+        arc_scope = arc.get_scope() # constraint variables
+
+        # check every variable is consistent with  other variables in the constraint (hyper-arc)
+        for v in arc_scope:
+
+            for d in v.cur_domain():
+
+                # prune if (v,d) pair does not satisfy the constraint
+                if not arc.has_support(v, d):
+
+                    pair = (v, d)       # prepare the (v,d ) tuple for returned prune list
+
+                    # do not duplicate the prune list
+                    # remove the unsatifying value from the varible domain
+                    if(pair not in pruned_list):
+                        pruned_list.append(pair)
+                        v.prune_value(d)        # remove value from variable
+
+                     # deadend reached, returns False to signal backtrack
+                    if v.cur_domain_size() == 0:   
+                        return False, pruned_list
+                    
+                    # repeatedly check the constraints associated with the updated variable 
+                    for c in csp.get_cons_with_var(v):
+                        if (c not in arc_queue):
+                            arc_queue.append(c)
+    return True, pruned_list    
+ 
