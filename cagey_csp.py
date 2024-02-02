@@ -1,7 +1,7 @@
 # =============================
-# Student Names:
-# Group ID:
-# Date:
+# Student Names: Panfilov Alex, Shum Amanda and Deschatrette Margaux
+# Group ID: 26
+# Date: 02/02/2024
 # =============================
 # CISC 352 - W23
 # cagey_csp.py
@@ -87,6 +87,15 @@ from cspbase import *
 import itertools
 
 def create_vars(grid_size):
+    """Creates a list of all CSP variables including their respective names and domains.
+
+    Arg:
+        grid_size (int): the size of the grid
+    
+    Returns:
+        var_array (list): an array containing all the CSP variables. Index 0 represents 
+        the top left grid cell, and index (grid_size^2)-1 the bottom left grid cell
+    """
 
     # create domain
     domain = [0]*grid_size
@@ -100,13 +109,25 @@ def create_vars(grid_size):
     for i in range(grid_size):
         for j in range(grid_size):
             var_name = f"{i+1},{j+1}"
-            new_var = Variable(var_name, [1, 2, 3])
+            new_var = Variable(var_name, domain)
             var_array[i*grid_size+j] = new_var
 
     # return variables
     return var_array
 
 def binary_ne_grid(cagey_grid):
+    """Creates a model of a Cagey grid (without cage constraints) built using 
+    only binary not-equal constraints for both the row and column constraints.
+
+    Arg:
+        cagey_grid : the size of the grid
+    
+    Returns:
+        binary_csp: A CSP object built on the binary_not_equal constraint 
+        var_array (array): an array containing all the CSP Variables objects representing
+            the board
+    """
+
     # get grid size
     grid_size = cagey_grid[0]
 
@@ -114,7 +135,6 @@ def binary_ne_grid(cagey_grid):
     var_array = create_vars(grid_size)
 
     # create variable domains for satisfying tuples
-    #potential issue - relative assignment
     varDoms = [0]*2
     domain = [0]*grid_size
     for i in range(grid_size):
@@ -130,10 +150,11 @@ def binary_ne_grid(cagey_grid):
     print(sat_tuples)
 
     # create constraints that no 2 items in a row are equal to each other
-    # and no 2 itens in a column are equal to each other
+    # and no 2 items in a column are equal to each other
     cons = []
     for i in range(grid_size):
         for comb in itertools.combinations(range(grid_size), 2):
+
             # create name and scope of row constraint
             row_name = f"Row{i+1}-{comb[0]+1},{comb[1]+1}"
             row_scope = [var_array[i*grid_size + comb[0]], var_array[i*grid_size + comb[1]]]
@@ -160,6 +181,17 @@ def binary_ne_grid(cagey_grid):
 
 
 def nary_ad_grid(cagey_grid):
+    """Creates a model of a Cagey grid (without cage constraints) built 
+    using only n-ary all different constraints for both the row and column constraints.
+
+    Arg:
+        cagey_grid : the size of the grid
+    
+    Returns:
+        binary_csp: A CSP object built on the n_all_different constraint 
+        var_array (array): an array containing all the CSP Variables objects representing
+            the board
+    """
 
     # get grid size
     grid_size = cagey_grid[0]
@@ -167,13 +199,62 @@ def nary_ad_grid(cagey_grid):
     # create the variables
     var_array = create_vars(grid_size)
 
-    # create constraints
+    # create variable domains for satisfying tuples
+    #potential issue - relative assignment
+    varDoms = [0]*grid_size
+    domain = [0]*grid_size
 
-    ## all items are different
-    pass
+    for i in range(grid_size):
+        domain[i] = i+1
+    
+    for i in range(grid_size):
+        varDoms[i] = domain
+
+    # create list of satisfying tuples
+    sat_tuples = []
+    for t in itertools.product(*varDoms):
+        valid = True
+        for i in range (grid_size):
+           if t[i] in t[i+1:grid_size]:
+                valid = False
+                break
+        if valid == True:
+            sat_tuples.append(t)
+    
+    # create constraints : items in a row and a column are different 
+    print("sat tuples 2",sat_tuples)
+    cons = []
+
+    for i in range(grid_size):
+             # create name and scope of row constraint 
+            row_name = f"Row{i+1}"
+            print("row_name:", row_name)
+            col_name = f"Col{i+1}"
+            print("col_name:", col_name)
+            row_scope2 = []
+            col_scope2 = []
+            for j in range(grid_size):
+                row_scope2.append(var_array[i*grid_size+j])
+                col_scope2.append(var_array[i + j*grid_size]) 
+            # create row and column constraints and add them to list of contraints
+            row_con = Constraint(row_name, row_scope2)
+            row_con.add_satisfying_tuples(sat_tuples)
+            col_con = Constraint(col_name, col_scope2)
+            col_con.add_satisfying_tuples(sat_tuples)
+            cons.append(row_con)
+            cons.append(col_con)
+    
+    # create CSP
+    nary_csp = CSP("nary_ne_grid", var_array)
+    for c in cons:
+        nary_csp.add_constraint(c)
+    
+    # return csp and variables
+    return nary_csp, var_array
 
 def cagey_csp_model(cagey_grid):
     ##IMPLEMENT
+
     pass
 
 create_vars(6)
