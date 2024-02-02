@@ -1,7 +1,7 @@
 # =============================
-# Student Names:
-# Group ID:
-# Date:
+# Student Names:  Panfilov Alex, Shum Amanda and Deschatrette Margaux
+# Group ID: 26
+# Date: 02/02/2024
 # =============================
 # CISC 352 - W23
 # propagators.py
@@ -72,8 +72,17 @@
    '''
 
 def prop_BT(csp, newVar=None):
-    '''Do plain backtracking propagation. That is, do no
-    propagation at all. Just check fully instantiated constraints'''
+    '''Do plain backtracking propagation : check fully instantiated constraints with 
+    a variable V if NewVar is not None, do nothing otherwise.  
+
+    Args:
+        csp: A CSP object which contains the variables and constraints of the problem
+        newVar (optional) : A newly instantiated variable of class Variable. Default to None.
+
+    Returns:
+        bool: False if a constraint is not satisfied; True otherwise or if newVar is None 
+        list : an empty list [], as nothing has been pruned by the propagator 
+    '''
 
     if not newVar:
         return True, []
@@ -86,13 +95,22 @@ def prop_BT(csp, newVar=None):
             if not c.check_tuple(vals):
                 return False, []
     return True, []
-def prop_FC(csp, newVar=None):
-    '''
-    Check constraints that have exactly one unassigned variable in their scope, 
-    Remove variable domain values that are not legal in the constraint. 
-    If newVar is None, search  all constraints. 
-    If newVar is given, only search  constraints involving newVar
 
+def prop_FC(csp, newVar=None):
+    '''Check constraints that have exactly one remaining unassigned variable 
+    in their scope and remove variable domain values that are not legal in the constraint. 
+    Search all unary constraints if newVar is None or search only the constraints involving
+    newVar if newVar is given.
+
+    Args:
+        csp : A CSP object which contains the variables and constraints of the problem
+        newVar (optional): A newly instantiated variable of class Variable. Default to None. 
+            If not None, newVar is the most recently assigned variable of the search. 
+
+    Returns:
+        bool : False if a dead-end is found, True if we can continue
+        pruned_list (list): a list of variable, values tuples that have been pruned by the
+            FC propagator 
     '''
 
     # A list of (Variable, value) tuples pruned by FC  
@@ -145,9 +163,20 @@ def prop_FC(csp, newVar=None):
 
 
 def prop_GAC(csp, newVar=None):
-    '''Do GAC propagation. If newVar is None we do initial GAC enforce 
-       processing all constraints. Otherwise we do GAC enforce with
-       constraints containing newVar on GAC Queue'''
+    '''Do a Generalized Arc Consistency (GAC) propagation. If newVar is None, initialize
+    the GAC queue with all constraints of the csp. 
+    If newVar is True, initialize the GAC queue with all constraints containing V.
+
+    Args:
+        csp: A CSP object which contains the variables and constraints of the problem
+        newVar (optional): A newly instantiated variable of class Variable. 
+            If not None, newVar is the most recently assigned variable of the search. 
+
+    Returns:
+        bool: False if a dead-end is found, True if we can continue
+        pruned_list (list): a list of variable, values tuples that have been pruned by the
+            GAC propagator 
+    '''
     
     pruned_list = []    # function returned list with pruned tuple(s), (var, val)
     arc_queue = []      # stores the hyper-arcs (constraints) to be processed, until empty
