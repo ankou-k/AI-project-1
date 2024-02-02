@@ -1,7 +1,7 @@
 # =============================
-# Student Names:
-# Group ID:
-# Date:
+# Student Names: Panfilov Alex, Shum Amanda and Deschatrette Margaux
+# Group ID: 26
+# Date: 01/02/2024
 # =============================
 # CISC 352 - W23
 # heuristics.py
@@ -28,7 +28,17 @@ var_ordering == a function with the following template
    '''
 
 def ord_dh(csp):
-    ''' return variables according to the Degree Heuristic '''
+    ''' Choose the next variable to be assigned for the propagator according to the 
+        Degree Heuristic (DH), i.e. the variable involved in the largest number of 
+        constraints and which have other unassigned variables
+
+    Args:
+        csp: A CSP object
+
+    Returns:
+        chosen_var: the next unassigned variable to be assigned with the largest 
+        number of constraints
+    '''
     # IMPLEMENT
     # find variable with highest number of contraints, which have other unassigned variables
     
@@ -48,7 +58,7 @@ def ord_dh(csp):
         # add amount of valid constraints to list
         num_constraints.append(count)
 
-    # find the unassigned variable with the largest umber of constraints
+    # find the unassigned variable with the largest number of constraints
     # which have other unassigned variables
     max_degree = max(num_constraints)
     index = num_constraints.index(max_degree)
@@ -56,7 +66,17 @@ def ord_dh(csp):
     return chosen_var
 
 def ord_mrv(csp):
-    ''' return variable according to the Minimum Remaining Values heuristic '''
+    ''' Choose the next variable to be assigned for the propagator according to the 
+        Minimum Remaining Values heuristic (MRV), i.e. the variable with the most 
+        constrained current domain
+
+    Args:
+        csp: A CSP object
+
+    Returns:
+        chosen_var: The next unassigned variable from class Variable to be assigned with the 
+        fewest legal values remaining
+    '''
     # IMPLEMENT
     # get all unassigned variables
     unasgn_vars = csp.get_all_unasgn_vars()
