@@ -8,6 +8,7 @@
 # desc:
 #
 
+import math
 #Look for #IMPLEMENT tags in this file.
 '''
 All models need to return a CSP object, and a list of lists of Variable objects
@@ -86,6 +87,21 @@ An example of a 3x3 puzzle would be defined as:
 from cspbase import *
 import itertools
 
+def get_domain(grid_size):
+    """Creates the variable domain for a specified cagey grid size.
+
+    Args:
+        grid_size (int): the size of the grid
+    
+    Returns:
+        domain (list): an array of integers from 1 to grid_size, representing the variable domain.
+    """
+    domain = [0]*grid_size
+    for i in range(grid_size):
+        domain[i] = i+1
+
+    return domain
+
 def create_vars(grid_size):
     """Creates a list of all CSP variables including their respective names and domains.
 
@@ -96,19 +112,14 @@ def create_vars(grid_size):
         var_array (list): an array containing all the CSP variables. Index 0 represents 
         the top left grid cell, and index (grid_size^2)-1 the bottom left grid cell
     """
-
-    # create domain
-    domain = [0]*grid_size
-    for i in range(grid_size):
-        domain[i] = i+1
-    print(domain)
+    domain = get_domain(grid_size)
 
     # create variables
     var_array = [0]*(grid_size*grid_size)
 
     for i in range(grid_size):
         for j in range(grid_size):
-            var_name = f"{i+1},{j+1}"
+            var_name = f"Cell({i+1},{j+1})"
             new_var = Variable(var_name, domain)
             var_array[i*grid_size+j] = new_var
 
@@ -135,10 +146,8 @@ def binary_ne_grid(cagey_grid):
     var_array = create_vars(grid_size)
 
     # create variable domains for satisfying tuples
+    domain = get_domain(grid_size)
     varDoms = [0]*2
-    domain = [0]*grid_size
-    for i in range(grid_size):
-        domain[i] = i+1
     varDoms[0] = domain
     varDoms[1] = domain
 
@@ -147,7 +156,6 @@ def binary_ne_grid(cagey_grid):
     for t in itertools.product(*varDoms):
         if t[0] != t[1]:
             sat_tuples.append(t)
-    print(sat_tuples)
 
     # create constraints that no 2 items in a row are equal to each other
     # and no 2 items in a column are equal to each other
@@ -200,12 +208,8 @@ def nary_ad_grid(cagey_grid):
     var_array = create_vars(grid_size)
 
     # create variable domains for satisfying tuples
-    #potential issue - relative assignment
+    domain = get_domain(grid_size)
     varDoms = [0]*grid_size
-    domain = [0]*grid_size
-
-    for i in range(grid_size):
-        domain[i] = i+1
     
     for i in range(grid_size):
         varDoms[i] = domain
@@ -222,27 +226,26 @@ def nary_ad_grid(cagey_grid):
             sat_tuples.append(t)
     
     # create constraints : items in a row and a column are different 
-    print("sat tuples 2",sat_tuples)
     cons = []
 
     for i in range(grid_size):
-             # create name and scope of row constraint 
-            row_name = f"Row{i+1}"
-            print("row_name:", row_name)
-            col_name = f"Col{i+1}"
-            print("col_name:", col_name)
-            row_scope2 = []
-            col_scope2 = []
-            for j in range(grid_size):
-                row_scope2.append(var_array[i*grid_size+j])
-                col_scope2.append(var_array[i + j*grid_size]) 
-            # create row and column constraints and add them to list of contraints
-            row_con = Constraint(row_name, row_scope2)
-            row_con.add_satisfying_tuples(sat_tuples)
-            col_con = Constraint(col_name, col_scope2)
-            col_con.add_satisfying_tuples(sat_tuples)
-            cons.append(row_con)
-            cons.append(col_con)
+        # create name and scope of row constraint 
+        row_name = f"Row{i+1}"
+        col_name = f"Col{i+1}"
+        row_scope2 = []
+        col_scope2 = []
+
+        for j in range(grid_size):
+            row_scope2.append(var_array[i*grid_size+j])
+            col_scope2.append(var_array[i + j*grid_size]) 
+
+        # create row and column constraints and add them to list of contraints
+        row_con = Constraint(row_name, row_scope2)
+        row_con.add_satisfying_tuples(sat_tuples)
+        col_con = Constraint(col_name, col_scope2)
+        col_con.add_satisfying_tuples(sat_tuples)
+        cons.append(row_con)
+        cons.append(col_con)
     
     # create CSP
     nary_csp = CSP("nary_ne_grid", var_array)
@@ -252,10 +255,156 @@ def nary_ad_grid(cagey_grid):
     # return csp and variables
     return nary_csp, var_array
 
+def add_sat_tuples(target, varDoms, sat_tuples):
+    """Appends to sat_tuple all the tuples that add up to the target value.
+
+    Args:
+        target (int): the value for tuples to add up to
+        varDoms (list): list of variable domains for the satisfying tuples
+        sat_tuples (list): list of tuples which satisfy current constraint
+
+    Returns:
+        sat_tuples (list): list of tuples which satisfy current constraint
+    """
+    print(f"add target: {target}")
+    for t in itertools.product(*varDoms):
+        if sum(t) == target:
+            sat = ('+',) + t
+            sat_tuples.append(sat)
+
+    return sat_tuples
+
+def subtract_sat_tuples(target, varDoms, sat_tuples):
+    """Appends to sat_tuple all the tuples whose subtraction results in the target value.
+
+    Args:
+        target (int): the value for tuples to subtract to
+        varDoms (list): list of variable domains for the satisfying tuples
+        sat_tuples (list): list of tuples which satisfy current constraint
+
+    Returns:
+        sat_tuples (list): list of tuples which satisfy current constraint
+    """
+    print(f"subtract target: {target}")
+    for t in itertools.product(*varDoms):
+        total = t[0]
+        for i in range(1, len(t)):
+            total -= i
+        if total == target:
+            sat = ('-',) + t
+            sat_tuples.append(sat)
+    
+    return sat_tuples
+
+def multiply_sat_tuples(target, varDoms, sat_tuples):
+    """Appends to sat_tuple all the tuples whose multiplication results in the target value.
+
+    Args:
+        target (int): the value for tuples to multiply to
+        varDoms (list): list of variable domains for the satisfying tuples
+        sat_tuples (list): list of tuples which satisfy current constraint
+
+    Returns:
+        sat_tuples (list): list of tuples which satisfy current constraint
+    """
+    for t in itertools.product(*varDoms):
+        if math.prod(t) == target:
+            sat = ('*',) + t
+            sat_tuples.append(sat)
+    
+    return sat_tuples
+
+def divide_sat_tuples(target, varDoms, sat_tuples):
+    """Appends to sat_tuple all the tuples whose division results in the target value.
+
+    Args:
+        target (int): the value for tuples to divide to
+        varDoms (list): list of variable domains for the satisfying tuples
+        sat_tuples (list): list of tuples which satisfy current constraint
+
+    Returns:
+        sat_tuples (list): list of tuples which satisfy current constraint
+    """
+    for t in itertools.product(*varDoms):
+        total = t[0]
+        for i in range(1, len(t)):
+            total /= i
+        if total == target:
+            sat = ('/',) + t
+            sat_tuples.append(sat)
+    
+    return sat_tuples
+
 def cagey_csp_model(cagey_grid):
-    ##IMPLEMENT
 
-    pass
+    # get grid size
+    grid_size = cagey_grid[0]
 
-create_vars(6)
-binary_ne_grid((3, [(3,[(1,1), (2,1)],"+"),(1, [(1,2)], '?'), (8, [(1,3), (2,3), (2,2)], "+"), (3, [(3,1)], '?'), (3, [(3,2), (3,3)], "+")]))
+    # get the variables and grid with binary not-equal constraints
+    csp, var_array = binary_ne_grid(cagey_grid)
+    csp.name = "cagey_csp_model"
+
+    # for each cage, add constraints into csp
+    for cage in cagey_grid[1]:
+        value = cage[0]
+        num_cells = len(cage[1])
+        operation = cage[2]
+
+        # create the scope of this cage
+        scope = [0]*num_cells
+        for i, cell in enumerate(cage[1]):
+            # account for cell numbers starting from 1 rather than 0
+            scope[i] = var_array[grid_size*(cell[0]-1) + (cell[1]-1)]
+
+        print(f"scope: {scope}")
+
+        # create cage operand variable
+        op_var_name = "Cage_op({}:{}:{})".format(value, operation, scope)
+        print(op_var_name)
+        operand_var = Variable(op_var_name, ['+', '-', '*', '/', '?'])
+        scope.append(operand_var)
+        csp.add_var(operand_var)
+        var_array.append(operand_var)
+
+
+        # create variable domains for satisfying tuples
+        domain = get_domain(grid_size)
+        varDoms = [0]*num_cells
+    
+        for i in range(num_cells):
+            varDoms[i] = domain
+        print(f"varDoms: {varDoms}")
+
+        # create list of satisfying tuples
+        sat_tuples = []
+        if operation == '+':
+            sat_tuples = add_sat_tuples(value, varDoms, sat_tuples)
+        elif operation == '-':
+            sat_tuples = subtract_sat_tuples(value, varDoms, sat_tuples)
+        elif operation == '*':
+            sat_tuples = multiply_sat_tuples(value, varDoms, sat_tuples)
+        elif operation == '/':
+            sat_tuples = divide_sat_tuples(value, varDoms, sat_tuples)
+        else:
+            print("HELLOOOOO")
+            # operation not explicitly given; could be any of the 4
+            sat_tuples = add_sat_tuples(value, varDoms, sat_tuples)
+            sat_tuples = subtract_sat_tuples(value, varDoms, sat_tuples)
+            sat_tuples = multiply_sat_tuples(value, varDoms, sat_tuples)
+            sat_tuples = divide_sat_tuples(value, varDoms, sat_tuples)
+
+        # create constraint 
+        cage_con = Constraint(f"Cage{i+1}", scope)
+        cage_con.add_satisfying_tuples(sat_tuples)
+        csp.add_constraint(cage_con)
+
+    for v in var_array:
+        print(v.name)
+
+    # return csp and variables
+    return csp, var_array
+
+#create_vars(6)
+#binary_ne_grid((3, [(3,[(1,1), (2,1)],"+"),(1, [(1,2)], '?'), (8, [(1,3), (2,3), (2,2)], "+"), (3, [(3,1)], '?'), (3, [(3,2), (3,3)], "+")]))
+#cagey_csp_model((3, [(3,[(1,1), (2,1)],"+"),(1, [(1,2)], '?'), (8, [(1,3), (2,3), (2,2)], "+"), (3, [(3,1)], '?'), (3, [(3,2), (3,3)], "+")]))
+cagey_csp_model((2,[(4, [(1, 1), (1, 2), (2, 1), (2, 2)], '+')]))
